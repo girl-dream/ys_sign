@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ys_sign_cpp.vcxproj" Id="96e6412e-03f6-4f06-ab79-b9bfc8561548" />
+</Solution>

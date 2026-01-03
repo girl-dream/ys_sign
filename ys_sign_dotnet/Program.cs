@@ -1,11 +1,13 @@
-﻿using System.Text;
+﻿using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace ys_sign_dotnet
 {
     public class Ys_sign
     {
-        private static HttpClient client = new HttpClient();
+        private static readonly HttpClient client = new HttpClient();
+        private static readonly Random _random = new Random();
 
         public static async Task Main(String[] args)
         {
@@ -14,7 +16,6 @@ namespace ys_sign_dotnet
 
             string json = File.ReadAllText(path);
             Dictionary<string, string> dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json)!;
-
             dynamic data;
             string url;
             HttpContent body;
@@ -37,7 +38,7 @@ namespace ys_sign_dotnet
 
                 headers.Add("User-Agent", $"Mozilla/5.0 (Linux; Android 12) Mobile miHoYoBBS/{dict!["miHoYo_ua_version"]}");
                 headers.Add("x-rpc-signgame", "hk4e");
-                headers.Add("Referer", "https://act.mihoyo.com/");
+                headers.Add("Referer", "https://act.mihoyo.com");
                 headers.Add("Cookie", dict["miHoYo_cookie"]);
                 await Sign(url, body, headers);
             }
@@ -54,7 +55,7 @@ namespace ys_sign_dotnet
 
                 headers.Clear();
                 headers.Add("User-Agent", $"Mozilla/5.0 (Linux; Android 12) Mobile miHoYoBBSOversea/${dict["HoYoLAB_ua_version"]}");
-                headers.Add("Referer", "https://act.hoyolab.com/");
+                headers.Add("Referer", "https://act.hoyolab.com");
                 headers.Add("Cookie", dict["HoYoLAB_cookie"]);
 
                 await Sign(url, body, headers);
@@ -77,8 +78,16 @@ namespace ys_sign_dotnet
             {
                 request.Headers.Add(header.Key, header.Value);
             }
-
-            HttpResponseMessage response = await client.SendAsync(request);
+            HttpResponseMessage response;
+            try
+            {
+                response = await client.SendAsync(request);
+            }
+            catch (Exception error)
+            {
+                Console.WriteLine($"请求失败{error}");
+                return;
+            }
             if (response.IsSuccessStatusCode)
             {
                 string res = await response.Content.ReadAsStringAsync();
@@ -88,6 +97,31 @@ namespace ys_sign_dotnet
             {
                 Console.WriteLine($"签到失败: {response.StatusCode}");
             }
+        }
+
+
+        private static string getDS(Dictionary<string, dynamic> body)
+        {
+            const string salt = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v";
+            long t = DateTimeOffset.Now.ToUnixTimeSeconds();
+            int r = _random.Next(100000, 200001);
+            if (r == 100000)
+            {
+                r = 642367;
+            }
+            var temp_body = new SortedDictionary<string, dynamic>(body);
+            string result = JsonSerializer.Serialize(temp_body);
+            string main = $"salt={salt}&t={t}&r={r}&b={result}";
+            string ds = md5(main);
+            return $"{t},{r},{ds}";
+        }
+
+        // 获取字符串的md5
+        private static string md5(string input)
+        {
+            var inputBytes = Encoding.UTF8.GetBytes(input);
+            var hashBytes = MD5.HashData(inputBytes);
+            return Convert.ToHexString(hashBytes);
         }
     }
 }

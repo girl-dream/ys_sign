@@ -11,6 +11,7 @@ dependencies:
   args: ^2.5.0
   http: ^1.4.0
   crypto: any
+  path: ^1.9.1
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.24.0

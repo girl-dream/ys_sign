@@ -1,16 +1,23 @@
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.TypeReference;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 
 public class Main {
@@ -22,7 +29,7 @@ public class Main {
         String body;
         String temp = Files.readString(Paths.get(new File(System.getProperty("user.dir")).getParent()).resolve("data.json"));
         Map<String, Object> map = JSONObject.parseObject(temp, new TypeReference<Map<String, Object>>() {});
-
+        getDS(map);
         if (!Objects.equals(map.get("miHoYo_uid"),"") && !Objects.equals(map.get("miHoYo_cookie"),"")){
             System.out.println("开始米游社签到");
             url = URI.create("https://api-takumi.mihoyo.com/event/luna/hk4e/sign");
@@ -58,7 +65,7 @@ public class Main {
         System.out.println("签到完成");
     }
 
-    public static void sign(URI url,Map<String,String> headers,String body)  {
+    private static void sign(URI url,Map<String,String> headers,String body)  {
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(url);
 
@@ -81,5 +88,33 @@ public class Main {
         } catch (Exception e){
             e.printStackTrace();
         }
+    }
+
+    private static String getDS(Map<String, Object> body){
+        final String salt = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v";
+        long t = Instant.now().getEpochSecond();
+
+        Random random = new Random();
+        int r = random.nextInt(100001) + 100000;
+        if (r == 100000){
+            r = 642367;
+        }
+        String temp_body = JSON.toJSONString(new TreeMap<>(body));
+        String main = String.format("salt=%s&t=%d&r=%d&b=%s",salt,t,r,temp_body);
+        String ds = md5(main);
+        return String.format("%d,%d,%s",t,r,ds);
+    }
+
+    // 将字符串转MD5加密
+    private static String md5(String str) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(str.getBytes());// 计算md5函数
+            String hashedPwd = new BigInteger(1, md.digest()).toString(16);// 16是表示转换为16进制数
+            return hashedPwd;
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
